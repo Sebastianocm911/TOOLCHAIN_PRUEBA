@@ -4,7 +4,7 @@ Esta rama agrega tres aplicaciones ELF que se compilan automáticamente porque e
 Makefile utiliza `wildcard apps/*.c`:
 
 - **Writer** (`writer.elf`): editor ligero de texto plano. Escribe en la ventana
-  y pulsa S para guardar en `/nota.txt`. Está sujeto al límite de tamaño del FS.
+  y pulsa Ctrl+S para guardar en `/nota.txt`. Está sujeto al límite de tamaño del FS.
 - **Calc** (`calc.elf`): calculadora de una lista numérica separada por comas.
   Pulsa Enter para obtener cantidad, suma y promedio entero.
 - **Browser** (`browser.elf`): pantalla experimental que informa el estado real
