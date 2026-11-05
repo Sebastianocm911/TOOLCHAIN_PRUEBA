@@ -95,7 +95,8 @@ static void draw(void){
         while(p[n]&&p[n]!=' '&&n+1<(int)sizeof(line))n++;
         /* Ajuste simple por palabras: cada linea ocupa como maximo 86 bytes. */
         if(p[n]==' '&&n>0&&n+1<(int)sizeof(line))n++;
-        for(int i=0;i<n;i++)line[i]=p[i];line[n]=0;
+        for(int i=0;i<n;i++){line[i]=p[i];}
+        line[n]=0;
         os->text(54,y,line,INK,0);p+=n;y+=24;
     }
     if(!bodies[current][0])os->text(54,y,"Escribe el contenido con el teclado.",MUTED,0);
