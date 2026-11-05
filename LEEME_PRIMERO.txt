@@ -1,0 +1,10 @@
+ToolchainOS V3.1 E56
+Informe: docs/informes/INFORME_ACADEMICO_ETAPAS56.docx
+Guia: docs/guias/GUIA_DEMOSTRACION_ETAPAS56.md
+ISO: build/toolchain-os.iso
+Resultados: artifacts/etapas56-20261029/results.json
+Procesos kernel sin aislamiento. Round Robin cooperativo, no preventivo.
+Ubuntu/WSL con ventana: python3 scripts/run_vm.py (1920x1080, red de usuario)
+Pantalla completa: python3 scripts/run_vm.py --fullscreen
+Sin ventana: python3 scripts/run_vm.py --headless
+El disco incluido es NUEVO y VACIO.
