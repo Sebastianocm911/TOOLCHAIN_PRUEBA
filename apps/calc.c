@@ -52,7 +52,7 @@ static int cell_value(int r,int c){
     if(s[0]!='='){plain_number(s,&n);return n;}
     s++;
     if(s[0]=='S'&&s[1]=='U'&&s[2]=='M'&&s[3]=='('){
-        int r1,c1,r2,c2,a,b,u=0,v=0;
+        int r1,c1,r2,c2,u=0,v=0;
         if(!parse_ref(s+4,&r1,&c1,&u)||s[4+u]!=':'||
            !parse_ref(s+5+u,&r2,&c2,&v)||s[5+u+v]!=')')return 0;
         int sum=0;
@@ -71,7 +71,8 @@ static void number_text(int value,char *out,int cap){
     char reverse[16];int n=0,p=0;
     if(value<0){out[p++]='-';value=-value;}
     do{reverse[n++]=(char)('0'+value%10);value/=10;}while(value&&n<(int)sizeof(reverse));
-    while(n&&p+1<cap)out[p++]=reverse[--n];out[p]=0;
+    while(n&&p+1<cap) { out[p++]=reverse[--n]; }
+    out[p]=0;
 }
 static void display_cell(int r,int c,char *out,int cap){
     if(cells[r][c][0]=='=')number_text(cell_value(r,c),out,cap);
@@ -120,8 +121,10 @@ static void commit_edit(void){
 static void move_cell(int dr,int dc){
     commit_edit();
     row+=dr;col+=dc;
-    if(row<0)row=0;if(row>=ROWS)row=ROWS-1;
-    if(col<0)col=0;if(col>=COLS)col=COLS-1;
+    if(row<0) row=0;
+    if(row>=ROWS) row=ROWS-1;
+    if(col<0) col=0;
+    if(col>=COLS) col=COLS-1;
     dirty=1;
 }
 static void draw(void){
