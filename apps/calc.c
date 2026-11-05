@@ -23,7 +23,7 @@ static void calculate(void){
 static void number(char *out,int value){
     int i=0;if(value<0){out[i++]='-';value=-value;}
     char rev[16];int n=0;do{rev[n++]=(char)('0'+value%10);value/=10;}while(value&&n<15);
-    while(n){out[i++]=rev[--n];}\n    out[i]=0;
+    while(n)out[i++]=rev[--n];out[i]=0;
 }
 static void draw(void){
     os->clear(BG);os->text(22,14,"ToolChain Calc",INK,1);

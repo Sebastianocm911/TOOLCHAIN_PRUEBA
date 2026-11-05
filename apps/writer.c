@@ -18,7 +18,7 @@ static void save(void){
 }
 static void draw(void){
     os->clear(BG);os->text(20,12,"ToolChain Writer",INK,1);
-    os->text(20,40,"Editor de texto plano | S: guardar | ESC: guardar y salir",MUTED,0);
+    os->text(20,40,"Editor de texto plano | CTRL+S: guardar | ESC: guardar y salir",MUTED,0);
     os->rect(18,68,os->width()-36,os->height()-112,PANEL);
     os->frame(18,68,os->width()-36,os->height()-112,0xc9d5e6);
     int x=30,y=82;
@@ -36,7 +36,7 @@ int main(host_api_t *api){
     while(api->pump(&ev)){
         if(ev.type==HOST_EV_CLOSE){save();break;}
         if(ev.type==HOST_EV_KEY){int k=(int)ev.key;if(k==27){save();break;}
-            if(k=='s'||k=='S')save();
+            if(k==19)save();
             else if(k=='\b'&&length>0)buffer[--length]=0;
             else if((k=='\n'||(k>=32&&k<127))&&length<LIMIT)buffer[length++]=(char)k;
             dirty=1;
