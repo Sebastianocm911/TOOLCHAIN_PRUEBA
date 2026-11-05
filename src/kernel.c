@@ -289,6 +289,8 @@ static void help(void){
         "    RATON                   RATON/TOUCHPAD PS/2: POSICION Y BOTONES\n"
         "    HORA | TIME             HORA LOCAL DEL ANFITRION (TAMBIEN EN LA BARRA)\n"
         "    NET                     ABRE HERRAMIENTAS GRAFICAS DE RED\n"
+        "    BROWSER                 NAVEGADOR WEB HTTPS (REQUIERE --web)\n"
+        "    WRITER | CALC | SLIDES  SUITE OFIMATICA NATIVA LIGERA\n"
         "    RED [ARP|PING|DNS|INTERNET] DIAGNOSTICO RTL8139: ARP/ICMP/DNS\n"
         "    LECTOR [archivo.txt]     VISOR DE DOCUMENTOS DE TEXTO\n"
         "    ELF | ELF RUN <n>       APLICACIONES ELF64 DE LOS MODULOS\n"
@@ -413,6 +415,10 @@ static void execute(char *line){
     else if(equal(cmd,"NET")){
         if(*args)net_command(args);else launch_app_command("net.elf",0);
     }
+    else if(equal(cmd,"BROWSER"))launch_app_command("browser.elf",0);
+    else if(equal(cmd,"WRITER"))launch_app_command("writer.elf",0);
+    else if(equal(cmd,"CALC"))launch_app_command("calc.elf",0);
+    else if(equal(cmd,"SLIDES")||equal(cmd,"PRESENTACION"))launch_app_command("slides.elf",0);
     else if(equal(cmd,"LECTOR"))launch_app_command("lector.elf",args);
     else if(equal(cmd,"ELF")||equal(cmd,"APPS"))elf_command(args);
     else if(equal(cmd,"PS"))process_list();

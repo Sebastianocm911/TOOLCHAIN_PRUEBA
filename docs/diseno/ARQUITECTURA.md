@@ -7,7 +7,9 @@ BIOS o UEFI → Limine → kmain (BSP x86-64)
   ├─ IDT + stubs NASM → excepciones fatales / PIC → PIT 100 Hz
   ├─ shell loop → scheduler cooperativo → dos pilas propias PMM
   ├─ FS RAM → snapshots LE con checksum → ATA PIO → imagen IDE pc
-  └─ COM2 → socket Unix local → ai_bridge.py → HTTP loopback Ollama
+  └─ COM2 / TC1 → socket Unix local → ai_bridge.py
+       ├─ Ollama local (IA)
+       └─ HTTPS publico (Browser textual; TLS en el anfitrion)
 ```
 El perfil original q35 se conserva. ATA usa pc/i440fx, maestro primario 0x1F0,
 control 0x3F6, LBA28, PCI IDE en modo compatible. Sin AHCI ni DMA.
@@ -27,8 +29,9 @@ RUN CPP continúa siendo el intérprete original, no un compilador completo.
 - tasks.c/context.asm: cambios de pila reales, READY/RUNNING/WAITING/DEAD.
 - ata.c: IDENTIFY, transferencias de 256 palabras, plazos y errores.
 - storage.c: autorización de imagen, validación, snapshots alternados.
-- ai_serial.c: UART COM2, enmarcado TC/1, solicitudes asíncronas.
-- scripts/ai_bridge.py: protocolo y API local real; ninguna respuesta fija.
+- ai_serial.c: UART COM2, enmarcado TC/1 para IA y solicitudes web.
+- scripts/ai_bridge.py: adaptador Ollama y fetch HTTPS con TLS verificado,
+  filtrado de destinos privados y extracción HTML a texto.
 
 Las tareas son cooperativas en modo kernel y comparten memoria. No existen
 aislamiento, modo usuario, syscall ni planificación preventiva.
@@ -43,3 +46,7 @@ Véanse ../informes/INFORME_FINAL.md y ../validacion/PRUEBAS_Y_RESULTADOS.md par
 Se conserva TC/1 y el puente sin cambios. La salida IA ahora conserva UTF-8 válido
 en lugar del filtro ASCII por byte. No se cambian PMM, tareas, FS ni ATA.
 Detalles de distribución/codificación/fuente y límites: ../guias/TECLADO_UTF8.md.
+
+## V3.2 — navegador y productividad nativa
+
+Se amplía HOST_ABI_VERSION a v6 con web_fetch, un servicio COM2 para solicitar páginas HTTPS al anfitrión. Browser muestra texto HTML acotado; no añade TCP/TLS al kernel. Writer, Calc y Slides son aplicaciones nativas pequeñas sobre el FS RAM actual.

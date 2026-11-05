@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Local COM2 bridge. No third-party dependencies; bounded TC/1 frames."""
 import argparse,asyncio,json,os,struct,threading,urllib.request,urllib.parse
+import html.parser,ipaddress,socket
 MAX=1024
 def frame(kind,request,body=b''):
     if isinstance(body,str):body=body.encode('utf-8')
@@ -23,6 +24,93 @@ class Decoder:
             if (sum(self.buf[:10])+sum(body))&65535!=checksum:del self.buf[0];continue
             del self.buf[:12+n];frames.append((kind,req,body))
         return frames
+
+class PageText(html.parser.HTMLParser):
+    """Convierte HTML no confiable a texto; nunca ejecuta JavaScript ni CSS."""
+    BLOCK={'address','article','blockquote','br','dd','div','dl','dt','h1','h2','h3',
+           'h4','h5','h6','hr','li','ol','p','pre','section','table','tr','ul'}
+    SKIP={'script','style','noscript','svg','iframe','form'}
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts=[];self.title=[];self.in_title=False;self.skip=0
+    def handle_starttag(self,tag,attrs):
+        if tag in self.SKIP:self.skip+=1
+        if tag=='title':self.in_title=True
+        if not self.skip and tag in self.BLOCK:self.parts.append('\n')
+    def handle_endtag(self,tag):
+        if tag=='title':self.in_title=False
+        if tag in self.SKIP and self.skip:self.skip-=1
+        if not self.skip and tag in self.BLOCK:self.parts.append('\n')
+    def handle_data(self,data):
+        if self.skip:return
+        if self.in_title:self.title.append(data)
+        else:self.parts.append(data)
+    def result(self):
+        title=' '.join(' '.join(self.title).split())[:120] or 'Pagina web'
+        raw=''.join(self.parts).replace('\r','\n')
+        lines=[]
+        for line in raw.splitlines():
+            compact=' '.join(line.split())
+            if compact:lines.append(compact)
+        return title,'\n'.join(lines)
+
+def validate_https_url(value):
+    parsed=urllib.parse.urlsplit(value)
+    if parsed.scheme.lower()!='https' or not parsed.hostname:
+        raise ValueError('SOLO SE PERMITEN URL HTTPS PUBLICAS')
+    if parsed.username or parsed.password or parsed.fragment:
+        raise ValueError('URL CON CREDENCIALES O FRAGMENTO NO PERMITIDA')
+    if parsed.port not in (None,443):
+        raise ValueError('SOLO SE PERMITE EL PUERTO HTTPS 443')
+    host=parsed.hostname.encode('idna').decode('ascii')
+    try:
+        addresses=[ipaddress.ip_address(host)]
+    except ValueError:
+        try:
+            addresses=[ipaddress.ip_address(item[4][0]) for item in
+                       socket.getaddrinfo(host,443,type=socket.SOCK_STREAM)]
+        except OSError as exc:
+            raise ValueError('NO SE PUDO RESOLVER EL DOMINIO') from exc
+    if not addresses or any(not address.is_global for address in addresses):
+        raise ValueError('DESTINO LOCAL/PRIVADO BLOQUEADO POR SEGURIDAD')
+    netloc=('['+host+']') if ':' in host else host
+    if parsed.port==443:netloc+=':443'
+    return urllib.parse.urlunsplit(('https',netloc,parsed.path or '/',parsed.query,''))
+
+class SafeHTTPSRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self,req,fp,code,msg,headers,newurl):
+        validate_https_url(newurl)
+        return super().redirect_request(req,fp,code,msg,headers,newurl)
+
+def fetch_page(url):
+    """Descarga HTTPS con validacion TLS del anfitrion y devuelve texto acotado."""
+    safe_url=validate_https_url(url)
+    opener=urllib.request.build_opener(urllib.request.ProxyHandler({}),SafeHTTPSRedirect())
+    request=urllib.request.Request(safe_url,headers={
+        'User-Agent':'ToolChainOS-TextBrowser/0.1',
+        'Accept':'text/html,text/plain,application/xhtml+xml;q=0.9,*/*;q=0.1'})
+    with opener.open(request,timeout=12) as response:
+        final_url=validate_https_url(response.geturl())
+        media=response.headers.get_content_type().lower()
+        if media not in ('text/html','text/plain','application/xhtml+xml'):
+            raise ValueError('TIPO DE CONTENIDO NO COMPATIBLE: '+media)
+        raw=response.read(512*1024+1)
+        if len(raw)>512*1024:raise ValueError('PAGINA MAYOR A 512 KiB')
+        charset=response.headers.get_content_charset() or 'utf-8'
+    try:source=raw.decode(charset,errors='replace')
+    except LookupError:source=raw.decode('utf-8',errors='replace')
+    if media=='text/plain':
+        title=urllib.parse.urlsplit(final_url).hostname or 'Texto'
+        body='\n'.join(' '.join(line.split()) for line in source.splitlines() if line.strip())
+    else:
+        parser=PageText()
+        parser.feed(source);parser.close()
+        title,body=parser.result()
+    result='TITULO: '+title+'\nURL: '+final_url+'\n\n'+body
+    encoded=result.encode('utf-8')
+    if len(encoded)>MAX-24:encoded=encoded[:MAX-24].decode('utf-8','ignore').encode()+b'\n[CONTENIDO RECORTADO]'
+    return encoded.decode('utf-8','strict')
+
 class Ollama:
     def __init__(self,url,model,timeout=100):
         p=urllib.parse.urlsplit(url)
@@ -68,9 +156,13 @@ async def bridge(socket_path,backend):
     async def job(kind,req,body):
         try:
             print(f'REQUEST id={req} type={kind} bytes={len(body)}',flush=True)
-            if kind==2:result=await asyncio.to_thread(backend.ready)
-            else:result=await asyncio.to_thread(backend.generate,body.decode('utf-8',errors='strict'))
-            await reply(0x82 if kind==2 else 0x81,req,result)
+            if kind==2:
+                result=await asyncio.to_thread(backend.ready);response_kind=0x82
+            elif kind==6:
+                result=await asyncio.to_thread(fetch_page,body.decode('utf-8',errors='strict'));response_kind=0x86
+            else:
+                result=await asyncio.to_thread(backend.generate,body.decode('utf-8',errors='strict'));response_kind=0x81
+            await reply(response_kind,req,result)
             print(f'RESPONSE id={req} bytes={len(result.encode())}',flush=True)
         except asyncio.CancelledError:
             print(f'CANCEL id={req}',flush=True);raise
@@ -84,7 +176,7 @@ async def bridge(socket_path,backend):
             for kind,req,body in decoder.feed(data):
                 if kind==3:
                     if req in jobs:jobs[req].cancel()
-                elif kind in (1,2):
+                elif kind in (1,2,6):
                     if jobs:
                         await reply(0xff,req,'PUENTE OCUPADO')
                     else:jobs[req]=asyncio.create_task(job(kind,req,body))

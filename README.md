@@ -329,6 +329,7 @@ flowchart TB
     K --> AI["TC/1 por COM2"]
     AI -.puente.-> BR["scripts/ai_bridge.py"]
     BR -.HTTP loopback.-> OL["Ollama"]
+    BR -.HTTPS TLS verificado.-> WEB["Sitios web públicos"]
 ```
 
 Decisiones y su justificación: [`docs/diseno/DECISIONES_TECNICAS.md`](docs/diseno/DECISIONES_TECNICAS.md).
@@ -415,9 +416,9 @@ python3 scripts/package_etapas56.py       # ZIP de entrega y verificación de pr
 - El ratón es PS/2 relativo: un touchpad funciona en modo compatibilidad, sin
   driver Synaptics/Elan absoluto, y no hay rueda ni doble puntero.
 - La red llega a Ethernet + ARP + IPv4 (ICMP y DNS por UDP) con IP fija
-  10.0.2.15/24: no hay TCP/IP, DHCP ni IPv6, y el RTL8139 se atiende por sondeo,
-  no por IRQ. Sin TCP no se puede abrir una página web ni ejecutar clientes que
-  dependan de sockets.
+  10.0.2.15/24: el kernel no tiene TCP/IP, DHCP ni IPv6, y el RTL8139 se atiende
+  por sondeo. La app Browser descarga HTML/texto HTTPS por COM2 usando un puente
+  Python anfitrión con TLS verificado; no ejecuta JavaScript/CSS ni es Firefox.
 - Las apps ELF corren en **ring 0** sin aislamiento; el `host_api_t` es la frontera
   y `elf_abort()` recupera el control si la app provoca una excepción. La ejecución
   es bloqueante, así que el escritorio mantiene una sola ventana de app a la vez.

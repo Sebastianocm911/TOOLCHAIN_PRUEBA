@@ -1,0 +1,29 @@
+name: ToolChainOS build and browser checks
+
+on:
+  push:
+    branches:
+      - main
+      - feature/productivity-suite-http-browser
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential nasm xorriso python3 python3-pil
+      - name: Check Python modules
+        run: python3 -m py_compile scripts/ai_bridge.py scripts/run_vm.py scripts/test_web_bridge.py
+      - name: Compile kernel and applications
+        run: make all apps
+      - name: Build bootable ISO
+        run: make iso
+      - name: Test HTTPS bridge parsing and TC/1 framing
+        run: make test-web-bridge

@@ -245,3 +245,16 @@ esquina del panel redondeado. `round_frame()` recorre el mismo trazado que
 `gui_round()` y pinta por filas el tramo que la curva gana respecto a la
 anterior, de modo que el contorno (azul en la activa) sigue las esquinas y queda
 continuo; la sombra se redondea también para no asomar cuadrada por detrás.
+
+## Suite web y productividad nativa — 2026-11-05
+
+- Browser: navegación HTTPS pública mediante el puente COM2/TC1; TLS y descarga
+  se realizan en el anfitrión, que extrae HTML a texto y bloquea destinos privados.
+- Writer: editor de texto UTF-8 con apertura por ruta, cursor y guardado.
+- Calc: hoja CSV de 8 × 6 celdas con fórmulas de suma, resta y SUM por rango.
+- Slides: editor de cinco diapositivas de texto en formato .tcs.
+- ABI v6, módulos Limine, accesos directos BROWSER/WRITER/CALC/SLIDES y comando
+  make run-web; HALT y las aplicaciones anteriores permanecen.
+- GitHub Actions: compilación del kernel/apps, ISO y pruebas de política HTTPS,
+  extracción HTML y encuadre TC/1 aprobadas. La interacción con la ISO en QEMU
+  todavía requiere validación manual.

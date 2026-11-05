@@ -14,6 +14,10 @@ static unsigned used;
 static uint32_t next_id,request;
 static uint64_t deadline,last_byte;
 static int pending,uart_present;
+/* Solicitud web independiente sobre el mismo COM2/TC1 que usa la IA. */
+static int web_pending,web_done,web_ok;
+static uint32_t web_request;
+static char web_response[MAX+1];
 static int agent_open;
 static uint32_t agent_id;
 static uint64_t agent_deadline;
@@ -35,7 +39,7 @@ static int frame(uint8_t type,uint32_t id,const char *body){
     return 1;
 }
 int ai_agent_active(void){return agent_open;}
-int ai_busy(void){return pending||agent_open;}
+int ai_busy(void){return pending||agent_open||web_pending;}
 static void agent_close(const char *reason){
     if(!agent_open)return;
     agent_open=0;
@@ -47,7 +51,7 @@ static void agent_observe(const char *text){
 }
 void ai_agent_start(const char *goal){
     if(!uart_present){console_write("ERROR AGENTE: COM2 NO DISPONIBLE.\n");return;}
-    if(pending||agent_open){console_write("IA OCUPADA; IA CANCEL PARA CANCELAR.\n");return;}
+    if(pending||agent_open||web_pending){console_write("IA OCUPADA; HAY UNA SOLICITUD EN CURSO.\n");return;}
     const char *text=goal;while(*text==' ')text++;
     if(!*text){agent_catalog();console_write("USO: AGENTE <OBJETIVO> | AGENTE ESCRITURA ON|OFF\n");return;}
     if(slen(text)>AGENT_OBS_MAX){console_write("ERROR AGENTE: OBJETIVO EXCEDE 704 BYTES.\n");return;}
@@ -85,7 +89,7 @@ void ai_command(const char *arg){
         return;
     }
     if(agent_open){console_write("AGENTE ACTIVO; IA CANCEL PARA CANCELAR.\n");return;}
-    if(pending){console_write("IA OCUPADA; IA CANCEL PARA CANCELAR.\n");return;}
+    if(pending||web_pending){console_write("IA OCUPADA; HAY UNA SOLICITUD EN CURSO.\n");return;}
     int status=ci_same(arg,"STATUS");
     if(!*arg){console_write("USO: IA pregunta | IA STATUS | IA CANCEL\n");return;}
     if(slen(arg)>MAX){console_write("ERROR IA: PREGUNTA EXCEDE 1024 BYTES.\n");return;}
@@ -93,6 +97,31 @@ void ai_command(const char *arg){
     if(!frame(status?2:1,request,status?"":arg)){console_write("ERROR IA: UART NO DISPONIBLE.\n");return;}
     pending=1;deadline=timer_ticks()+(status?200:12000);
     console_write("IA REQUEST ");console_dec(request);console_write(status?" STATUS: VERIFICANDO PUENTE/MODELO\n":" ENVIADA (COM2); SHELL DISPONIBLE\n");
+}
+int ai_web_fetch(const char *url,char *out,size_t capacity){
+    if(!out||capacity<2)return 0;
+    out[0]=0;
+    if(!uart_present){copystr(out,"ERROR: COM2 NO DISPONIBLE; ARRANCA CON --web.",capacity);return 0;}
+    if(!url||!*url||slen(url)>MAX){copystr(out,"ERROR: URL VACIA O DEMASIADO LARGA.",capacity);return 0;}
+    if(pending||agent_open||web_pending){copystr(out,"ERROR: COM2 OCUPADO POR OTRA SOLICITUD.",capacity);return 0;}
+    web_request=++next_id;if(!web_request)web_request=++next_id;
+    web_pending=1;web_done=0;web_ok=0;web_response[0]=0;
+    if(!frame(6,web_request,url)){
+        web_pending=0;copystr(out,"ERROR: NO SE PUDO ENVIAR LA URL POR COM2.",capacity);return 0;
+    }
+    /* El puente anfitrion realiza TLS/HTTPS y devuelve texto web acotado. */
+    uint64_t end=timer_ticks()+1500; /* 15 s a 100 Hz */
+    while(!web_done&&timer_ticks()<end){
+        ai_poll();
+        __asm__ volatile("pause");
+    }
+    if(!web_done){
+        web_pending=0;
+        copystr(out,"ERROR: TIMEOUT DEL PUENTE WEB; REVISA python3 scripts/run_vm.py --web.",capacity);
+        return 0;
+    }
+    copystr(out,web_response,capacity);
+    return web_ok;
 }
 static void discard(void){if(used){for(unsigned i=1;i<used;i++)rx[i-1]=rx[i];used--;}}
 int ai_poll(void){
@@ -116,6 +145,11 @@ int ai_poll(void){
                 if(rx[3]==0x84)agent_step((const char*)rx+12,n);
                 else agent_done((const char*)rx+12,n);
                 event=1;
+            }else if(web_pending&&get32(rx+4)==web_request&&(rx[3]==0x86||rx[3]==0xff)){
+                web_pending=0;web_done=1;web_ok=rx[3]==0x86;
+                unsigned amount=n<MAX?n:MAX;
+                for(unsigned i=0;i<amount;i++)web_response[i]=(char)rx[12+i];
+                web_response[amount]=0;
             }else if(pending&&get32(rx+4)==request&&(rx[3]==0x81||rx[3]==0x82||rx[3]==0xff)){
                 pending=0;console_write(rx[3]==0xff?"\nERROR IA: ":"\nIA RESPONSE: ");
                 /* The complete TC/1 payload is UTF-8 text, not bytewise ASCII. */

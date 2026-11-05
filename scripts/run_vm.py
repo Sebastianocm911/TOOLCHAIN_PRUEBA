@@ -20,7 +20,7 @@ def stop(p):
     try:p.wait(timeout=3)
     except subprocess.TimeoutExpired:p.kill();p.wait()
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--ata',action='store_true');p.add_argument('--ai',action='store_true')
+    p=argparse.ArgumentParser();p.add_argument('--ata',action='store_true');p.add_argument('--ai',action='store_true');p.add_argument('--web',action='store_true')
     p.add_argument('--headless',action='store_true');p.add_argument('--disk',default='build/data.img')
     p.add_argument('--fullscreen',action='store_true');p.add_argument('--no-net',action='store_true')
     p.add_argument('--print-command',action='store_true');a=p.parse_args()
@@ -35,7 +35,7 @@ def main():
         if a.fullscreen or os.environ.get('QEMU_FULLSCREEN')=='1':command+=['-full-screen']
     if a.ata:command+=qemu_config.disk(image_path(a.disk))
     sock=ROOT/'build/ai.sock'
-    if a.ai:
+    if a.ai or a.web:
         if sock.exists() or sock.is_symlink():raise ValueError('build/ai.sock ya existe; comprueba su propietario antes de retirarlo')
         command+=['-chardev','socket,id=ai,path=build/ai.sock,server=on,wait=off','-serial','chardev:ai']
     import shlex
@@ -44,7 +44,7 @@ def main():
     q=None;bridge=None;log=None
     try:
         q=subprocess.Popen(command)
-        if a.ai:
+        if a.ai or a.web:
             import time
             end=time.monotonic()+3
             while not sock.exists():
@@ -58,7 +58,7 @@ def main():
     finally:
         stop(bridge);stop(q)
         if log:log.close()
-        if a.ai and sock.exists() and stat.S_ISSOCK(sock.lstat().st_mode):sock.unlink()
+        if (a.ai or a.web) and sock.exists() and stat.S_ISSOCK(sock.lstat().st_mode):sock.unlink()
 if __name__=='__main__':
     try:main()
     except (ValueError,OSError,RuntimeError) as exc:raise SystemExit(str(exc))

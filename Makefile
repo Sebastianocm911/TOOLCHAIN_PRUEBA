@@ -122,7 +122,7 @@ clean:
 -include $(OBJ:.o=.d)
 
 
-.PHONY: smoke test-files test-core run-ata test-ata test-persistence run-ai test-ai-bridge test-ai-real test-agent test-uefi test-all disk
+.PHONY: smoke test-files test-core run-ata test-ata test-persistence run-ai test-ai-bridge test-ai-real test-agent test-uefi test-all test-web-bridge run-web disk
 smoke: iso
 	python3 scripts/smoke_test.py
 test-files: iso
@@ -137,8 +137,12 @@ test-ata test-persistence: iso
 	python3 scripts/test_persistence.py
 run-ai: iso
 	python3 scripts/run_vm.py --ai $(VM_ARGS)
+run-web: iso
+	python3 scripts/run_vm.py --web $(VM_ARGS)
 test-ai-bridge: iso
 	python3 scripts/test_ai.py
+test-web-bridge:
+	python3 scripts/test_web_bridge.py
 test-agent: iso
 	python3 scripts/test_agent.py
 test-ai-real: iso
