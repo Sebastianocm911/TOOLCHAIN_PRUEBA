@@ -628,7 +628,7 @@ static int dock_button_rect(int index, int *x, int *y, int *width, int *height) 
 static void window_default(gui_window_t *window, int kind, int slot) {
     int w = back.width / 3;
     int h = content_height * 3 / 5;
-    if (kind == WIN_APPS) { w = back.width / 4; h = content_height * 2 / 5; }
+    if (kind == WIN_APPS) { w = back.width / 4; h = content_height * 4 / 5; }
     if (kind == WIN_SYSTEM) { w = back.width / 3; h = content_height * 4 / 5; }
     if (kind == WIN_FILES) { w = back.width * 2 / 5; h = content_height * 3 / 4; }
     if (kind == WIN_IMAGES) { w = back.width / 2; h = content_height * 3 / 4; }

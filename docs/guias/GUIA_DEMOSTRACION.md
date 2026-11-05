@@ -127,3 +127,20 @@ Las pruebas actuales son automatizadas y las capturas se inspeccionaron; no se
 afirma una prueba humana del teclado físico.
 PMMTEST/UPTIME/TASKS siguen operativos. EXTEST DE/PF detienen deliberadamente
 la VM: no usarlos dentro de la demostración principal.
+
+## Navegador HTTPS y suite de productividad (V3.2)
+
+Reconstruye la ISO y arranca el puente web sin iniciar Ollama:
+
+~~~bash
+make iso
+python3 scripts/run_vm.py --web
+# Alternativa: make run-web
+~~~
+
+En ToolChainOS abre Aplicaciones y selecciona Browser (módulo 4 si se conserva
+el orden de limine.conf). Prueba https://example.com o escribe una búsqueda para
+Google y pulsa Enter. La descarga se hace en el anfitrión por HTTPS/TLS y el
+sistema invitado recibe texto. No se ejecuta JavaScript ni se dibuja el CSS del
+sitio. Para la suite ofimática abre Writer, Calc o Slides desde Aplicaciones;
+Ctrl+S guarda texto, CSV o .tcs, respectivamente.

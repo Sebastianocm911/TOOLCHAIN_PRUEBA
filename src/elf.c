@@ -3,6 +3,7 @@
 #include "fs.h"
 #include "gui.h"
 #include "host_api.h"
+#include "ai_serial.h"
 #include "interrupts.h"
 #include "keyboard.h"
 #include "pmm.h"
@@ -121,6 +122,9 @@ static const char *api_launch_file(void) {
 /* --- v5: archivos internos del sistema --------------------------------- */
 
 static int api_is_system(const char *path) { return path ? fs_is_system_path(path) : 0; }
+static int api_web_fetch(const char *url, char *out, int capacity) {
+    return capacity > 0 ? ai_web_fetch(url, out, (size_t)capacity) : 0;
+}
 
 static const host_api_t host = {
     .abi_version = HOST_ABI_VERSION,
@@ -136,6 +140,7 @@ static const host_api_t host = {
     .exec = api_exec, .key = api_key,
     .launch_file = api_launch_file,
     .is_system = api_is_system,
+    .web_fetch = api_web_fetch,
 };
 
 /* --- Servicios del cargador -------------------------------------------- */

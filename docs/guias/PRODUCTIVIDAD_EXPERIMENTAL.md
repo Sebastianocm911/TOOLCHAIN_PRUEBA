@@ -1,31 +1,59 @@
-# Suite de productividad experimental
+# Suite de productividad y navegador ToolChainOS
 
-Esta rama agrega tres aplicaciones ELF que se compilan automáticamente porque el
-Makefile utiliza `wildcard apps/*.c`:
+La rama incorpora aplicaciones ELF nativas para el escritorio. Se compilan junto
+al resto de apps/*.c y se registran como módulos de Limine.
 
-- **Writer** (`writer.elf`): editor ligero de texto plano. Escribe en la ventana
-  y pulsa Ctrl+S para guardar en `/nota.txt`. Está sujeto al límite de tamaño del FS.
-- **Calc** (`calc.elf`): calculadora de una lista numérica separada por comas.
-  Pulsa Enter para obtener cantidad, suma y promedio entero.
-- **Browser** (`browser.elf`): pantalla experimental que informa el estado real
-  de la red. No descarga páginas todavía.
+## Aplicaciones
 
-## Límites explícitos
+- **Browser** (browser.elf): barra URL, búsqueda Google, desplazamiento y
+  descarga real de páginas HTTPS. El kernel transmite la solicitud por TC/1/COM2
+  y scripts/ai_bridge.py usa HTTPS con validación de certificados en el anfitrión.
+  La respuesta se convierte a texto plano y se limita a una trama de 1 KiB.
+- **Writer** (writer.elf): editor de documentos de texto UTF-8, con cursor,
+  navegación, abrir el archivo con el que se lanzó y guardar con Ctrl+S en el FS.
+- **Calc** (calc.elf): hoja de 8 × 6 celdas, lectura/escritura CSV y fórmulas
+  básicas =A1+B2, =A1-B2 y =SUM(A1:B3).
+- **Slides** (slides.elf): editor de cinco diapositivas de texto, con título y
+  contenido por diapositiva; guarda en /presentacion.tcs.
 
-No se anuncia compatibilidad DOCX, ODT, XLSX u ODS. El sistema de archivos expuesto
-por la ABI actual es textual y tiene un límite pequeño por archivo. Tampoco se
-anuncia navegación web funcional: el kernel tiene funciones Ethernet/ARP/ICMP/DNS,
-pero todavía no expone sockets TCP ni un cliente HTTP. La siguiente fase debe
-implementar transporte TCP, sockets y HTTP antes de convertir Browser en navegador.
+## Navegación HTTPS
 
-## Compilación y ejecución
+La pila de red del kernel sigue implementando RTL8139, Ethernet, ARP, ICMP y
+DNS; todavía no implementa TCP/TLS dentro del propio kernel. Para que Browser
+pueda abrir páginas sin fingir capacidades, se añadió un servicio web al puente
+COM2 que ya se usa para la IA.
 
-Desde la raíz del proyecto:
+Desde Linux/WSL, en la raíz del repositorio:
 
-```sh
+~~~sh
+make iso
+python3 scripts/run_vm.py --web
+~~~
+
+Ese lanzador conecta COM2 a ai_bridge.py sin exigir Ollama. En el escritorio
+abre browser.elf, escribe una URL (por ejemplo https://example.com) o una
+búsqueda, y pulsa Enter. También se puede usar make run-web.
+
+El puente solo acepta HTTPS público por el puerto 443, bloquea destinos locales
+y privados, valida certificados TLS, sigue redirecciones HTTPS seguras y acepta
+HTML/texto. No ejecuta JavaScript, CSS, extensiones, cookies, audio, vídeo ni
+descarga imágenes. Por ahora muestra un extracto de texto de hasta 1 KiB; no es
+Firefox/Chromium ni un navegador visual completo.
+
+## Alcance ofimático
+
+Writer guarda texto UTF-8 y Calc guarda CSV. Slides guarda un formato de texto
+propio .tcs. El FS de esta versión tiene 64 nodos y un máximo de 1023 bytes
+útiles por archivo. No se declara compatibilidad con DOCX, ODT, XLSX, ODS,
+PPTX ni PDF. LibreOffice y ONLYOFFICE son suites de gran tamaño que dependen de
+bibliotecas, formatos, servicios y subsistemas que ToolChainOS todavía no posee;
+no se pueden copiar directamente a este kernel freestanding.
+
+## Compilación y pruebas
+
+~~~sh
 make apps
 make iso
-make run
-```
-
-Las aplicaciones se incluyen automáticamente en `build/toolchain-os.iso`.
+make test-web-bridge
+make run-web
+~~~

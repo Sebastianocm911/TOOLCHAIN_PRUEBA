@@ -190,11 +190,11 @@ queda fuera de esta entrega.
 - IP fija 10.0.2.15/24 con puerta 10.0.2.2 y DNS 10.0.2.3 (red de usuario de
   QEMU, SLIRP).
 
-**Límite:** hay Ethernet, ARP, ICMP y DNS, pero no pila TCP/IP, DHCP ni IPv6.
-Sin TCP no hay HTTP ni sockets: no se puede navegar. Tampoco se atiende la IRQ
-del dispositivo: la recepción es por sondeo desde `net_poll()`, invocado en la
-shell y en el bucle gráfico, y cada espera (ARP 0,5 s, ping 1 s, DNS 3 s) se
-resuelve dentro de ese sondeo.
+**Límite:** el kernel invitado sigue sin pila TCP/IP, DHCP ni IPv6. Por eso Browser
+no abre sockets del RTL8139: usa un servicio HTTPS por COM2 hacia scripts/ai_bridge.py
+en el anfitrión. El anfitrión valida TLS, bloquea direcciones privadas y convierte
+HTML a texto. No hay JavaScript, CSS, cookies ni contenido multimedia; la respuesta
+se limita a 1 KiB. La recepción RTL8139 continúa por sondeo desde net_poll().
 
 ## 8. Aplicaciones ELF64
 
@@ -239,8 +239,7 @@ Aplicaciones incluidas:
   DOCX binario: el FS actual almacena texto de hasta 1023 bytes; ver
   `docs/diseno/LECTOR_NET.md` para los requisitos de OOXML/ZIP.
 - `apps/net.c`: panel gráfico que ejecuta los diagnósticos `RED` del kernel
-  (estado RTL8139, ARP, ICMP/PING y DNS) mediante `host_api.exec`. No es un
-  navegador: falta TCP/IP/HTTP.
+  (estado RTL8139, ARP, ICMP/PING y DNS) mediante `host_api.exec`. No reemplaza la pila TCP del kernel; Browser usa el puente COM2.
 - `apps/editor.c`: editor de texto de 1023 bytes (límite del FS) con plantilla
   en blanco sin nombre. Barra con `Nuevo`, `Abrir` y `Guardar`; `Abrir`/`Guardar`
   abren un selector interno con el árbol del FS (ruta actual, `..`, lista con
